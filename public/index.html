@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ask Gemini - Prompt Response App</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 25%, #c8e6c9 50%, #ffebee 100%);
+      border-radius: 12px;  
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1.title {
+      color: #333;
+      margin-bottom: 30px;
+      text-align: center;
+      font-size: 28px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 1px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    #promptInput {
+      flex: 1;
+      padding: 12px 16px;
+      border: 3px solid transparent;
+      border-radius: 8px;
+      font-size: 16px;
+      background: linear-gradient(white, white) padding-box,
+                  linear-gradient(90deg, #0099ff, #0099ff) border-box;
+      background-size: 100% 100%, 200% 100%;
+      background-position: 0 0, 0 0;
+      animation: blueBorderLoading 2s linear infinite;
+      transition: box-shadow 0.3s;
+    }
+
+    @keyframes blueBorderLoading {
+      0% {
+        background-position: 0 0, 0 0;
+      }
+      100% {
+        background-position: 0 0, 100% 0;
+      }
+    }
+
+    #promptInput:focus {
+      outline: none;
+      box-shadow: 0 0 15px rgba(0, 153, 255, 0.5);
+    }
+
+    button {
+      padding: 12px 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      animation: buttonPop 0.6s ease-out;
+    }
+
+    @keyframes buttonPop {
+      0% {
+        transform: translateY(0) scale(1);
+      }
+      50% {
+        transform: translateY(-30px) scale(1.05);
+      }
+      100% {
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    #responseContainer {
+      min-height: 80px;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    #responseText {
+      color: #333;
+      font-size: 18px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .loading {
+      text-align: center;
+      color: #667eea;
+      font-style: italic;
+    }
+
+    .error {
+      color: #e74c3c;
+      padding: 12px;
+      background: #fadbd8;
+      border-radius: 6px;
+      border-left: 4px solid #e74c3c;
+    }
+
+    .success {
+      color: #27ae60;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">Ask Gemini</h1>
+
+    <div class="input-group">
+      <input
+        type="text"
+        id="promptInput"
+        placeholder="Enter your prompt here..."
+        onkeypress="handleKeyPress(event)"
+      />
+      <button onclick="sendPrompt()">Send</button>
+    </div>
+
+    <div id="responseContainer">
+      <h1 id="responseText">Your response will appear here...</h1>
+    </div>
+  </div>
+
+  <script>
+    async function sendPrompt() {
+      const promptInput = document.getElementById('promptInput');
+      const responseText = document.getElementById('responseText');
+      const prompt = promptInput.value.trim();
+
+      if (!prompt) {
+        responseText.textContent = 'Please enter a prompt';
+        responseText.style.color = '#e74c3c';
+        return;
+      }
+
+      responseText.textContent = 'Loading...';
+      responseText.style.color = '#667eea';
+
+      try {
+        const response = await fetch('/api/prompt', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt }),
+        });
+
+        if (!response.ok) {
+          let errorMessage = 'Failed to get response';
+
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.details || errorData.error || errorMessage;
+          } catch (parseError) {
+            // Keep the fallback message when the server does not return JSON.
+          }
+
+          console.error('API Error:', errorMessage);
+          throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+        responseText.textContent = data.response;
+        responseText.style.color = '#27ae60';
+      } catch (error) {
+        responseText.textContent = `Error: ${error.message}`;
+        responseText.style.color = '#e74c3c';
+      }
+    }
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter') {
+        sendPrompt();
+      }
+    }
+  </script>
+</body>
+</html>
